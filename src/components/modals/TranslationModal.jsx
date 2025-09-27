@@ -146,27 +146,42 @@ const TranslationModal = ({ onClose }) => {
       return '';
     }
     
+    // Handle common empty HTML patterns
+    const trimmedHtml = html.trim();
+    if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>') {
+      debugLog('🔍 HTML contains only empty tags');
+      return '';
+    }
+    
     // Create a temporary div to extract text content
     const div = document.createElement('div');
     div.innerHTML = html;
     
-    // Get text content and clean it up
-    let extractedText = div.textContent || div.innerText || '';
-    extractedText = extractedText.trim();
+    // Get text content using multiple methods
+    let extractedText = '';
     
-    // Remove extra whitespace and line breaks but preserve meaningful content
-    extractedText = extractedText.replace(/\s+/g, ' ').trim();
-    
-    debugLog('🔍 Extracted text result:', extractedText);
-    debugLog('🔍 Extracted text length:', extractedText.length);
-    
-    // Check if we only have empty paragraphs or divs after text extraction
-    if (extractedText === '' && html.includes('<')) {
-      // Check if HTML only contains empty tags
-      const cleanHTML = html.replace(/<[^>]*>/g, '').trim();
-      debugLog('🔍 Clean HTML after tag removal:', cleanHTML);
-      return cleanHTML;
+    // Method 1: Try textContent first (most reliable)
+    if (div.textContent) {
+      extractedText = div.textContent;
     }
+    // Method 2: Fallback to innerText
+    else if (div.innerText) {
+      extractedText = div.innerText;
+    }
+    // Method 3: Manual parsing by removing HTML tags
+    else {
+      extractedText = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+    }
+    
+    // Clean up the extracted text
+    extractedText = extractedText
+      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+      .trim();
+    
+    debugLog('🔍 Extracted text result:', `"${extractedText}"`);
+    debugLog('🔍 Extracted text length:', extractedText.length);
+    debugLog('🔍 Character codes:', extractedText.split('').map(c => c.charCodeAt(0)));
     
     return extractedText;
   };

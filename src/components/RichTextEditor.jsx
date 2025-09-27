@@ -37,6 +37,23 @@ const RichTextEditor = () => {
   const handleContentChange = async () => {
     if (!currentNote || !editorRef.current) return;
     const content = editorRef.current.innerHTML;
+    const textContent = editorRef.current.textContent || editorRef.current.innerText || '';
+    
+    // Update status indicator
+    const statusEl = document.getElementById('contentStatus');
+    if (statusEl) {
+      statusEl.textContent = textContent.length > 0 ? `✓ ${textContent.length} chars` : '⚠ Empty';
+      statusEl.style.color = textContent.length > 0 ? '#28a745' : '#dc3545';
+    }
+    
+    // Debug logging only in development
+    if (import.meta.env.DEV) {
+      console.log('🔍 EDITOR: Content changed');
+      console.log('🔍 EDITOR: innerHTML:', JSON.stringify(content));
+      console.log('🔍 EDITOR: textContent:', JSON.stringify(textContent));
+      console.log('🔍 EDITOR: textContent length:', textContent.length);
+    }
+    
     const updatedNote = { ...currentNote, content };
     await saveNote(updatedNote);
     updateWordCount();
@@ -44,7 +61,7 @@ const RichTextEditor = () => {
 
   const updateWordCount = () => {
     if (!editorRef.current) return;
-    const text = editorRef.current.textContent || editorRef.current.innerText;
+    const text = editorRef.current.textContent || editorRef.current.innerText || '';
     const words = text.trim().split(/\s+/).filter(word => word.length > 0);
     const wordCountEl = document.getElementById('wordCount');
     if (wordCountEl) {
@@ -103,6 +120,7 @@ const RichTextEditor = () => {
         <div className="note-info">
           <span>Modified: {formatDate(currentNote.dateModified)}</span>
           <span id="wordCount">0 words</span>
+          <span id="contentStatus" style={{fontSize: '12px', color: '#666', marginLeft: '10px'}}></span>
         </div>
       </div>
 
@@ -115,6 +133,14 @@ const RichTextEditor = () => {
           onInput={handleContentChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
+          onBlur={handleContentChange}
+          onFocus={() => {
+            if (import.meta.env.DEV) {
+              console.log('🔍 EDITOR: Focused on editor');
+              console.log('🔍 EDITOR: Current innerHTML:', editorRef.current?.innerHTML);
+              console.log('🔍 EDITOR: Current textContent:', editorRef.current?.textContent);
+            }
+          }}
           suppressContentEditableWarning={true}
         />
       </div>

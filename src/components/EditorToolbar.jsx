@@ -124,7 +124,9 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
   const handleAISummary = async () => {
     infoLog('📝 Generating AI summary...');
     debugLog('Summary button clicked');
-    debugLog('Current note content:', currentNote?.content);
+    debugLog('Current note:', currentNote);
+    debugLog('Current note content type:', typeof currentNote?.content);
+    debugLog('Current note content raw:', JSON.stringify(currentNote?.content));
     
     if (!currentNote?.content) {
       alert('Please add some content to generate a summary');
@@ -134,11 +136,11 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const text = extractTextFromHTML(currentNote.content);
-      debugLog('Extracted text:', text);
-      debugLog('Extracted text length:', text.length);
+      debugLog('Final extracted text:', `"${text}"`);
+      debugLog('Final extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 5) {
-        alert('✍️ Please type some content in the note first!\n\nYou need at least 5 characters to generate an AI summary.');
+        alert('✍️ Please type some content in the note first!\n\nYou need at least 5 characters to generate an AI summary.\n\nCurrent content: "' + text + '"');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
@@ -331,27 +333,42 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       return '';
     }
     
+    // Handle common empty HTML patterns
+    const trimmedHtml = html.trim();
+    if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>') {
+      debugLog('🔍 HTML contains only empty tags');
+      return '';
+    }
+    
     // Create a temporary div to extract text content
     const div = document.createElement('div');
     div.innerHTML = html;
     
-    // Get text content and clean it up
-    let extractedText = div.textContent || div.innerText || '';
-    extractedText = extractedText.trim();
+    // Get text content using multiple methods
+    let extractedText = '';
     
-    // Remove extra whitespace and line breaks but preserve meaningful content
-    extractedText = extractedText.replace(/\s+/g, ' ').trim();
-    
-    debugLog('🔍 Extracted text result:', extractedText);
-    debugLog('🔍 Extracted text length:', extractedText.length);
-    
-    // Check if we only have empty paragraphs or divs after text extraction
-    if (extractedText === '' && html.includes('<')) {
-      // Check if HTML only contains empty tags
-      const cleanHTML = html.replace(/<[^>]*>/g, '').trim();
-      debugLog('🔍 Clean HTML after tag removal:', cleanHTML);
-      return cleanHTML;
+    // Method 1: Try textContent first (most reliable)
+    if (div.textContent) {
+      extractedText = div.textContent;
     }
+    // Method 2: Fallback to innerText
+    else if (div.innerText) {
+      extractedText = div.innerText;
+    }
+    // Method 3: Manual parsing by removing HTML tags
+    else {
+      extractedText = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+    }
+    
+    // Clean up the extracted text
+    extractedText = extractedText
+      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+      .trim();
+    
+    debugLog('🔍 Extracted text result:', `"${extractedText}"`);
+    debugLog('🔍 Extracted text length:', extractedText.length);
+    debugLog('🔍 Character codes:', extractedText.split('').map(c => c.charCodeAt(0)));
     
     return extractedText;
   };
