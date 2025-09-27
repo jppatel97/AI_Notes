@@ -57,7 +57,7 @@ const TranslationModal = ({ onClose }) => {
       debugLog('Extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 2) {
-        alert('Please add some meaningful text content to translate (at least 2 characters)');
+        alert('🌍 Please type some content in the note first!\n\nYou need at least 2 characters to translate.');
         setIsTranslating(false);
         dispatch({ type: 'SET_LOADING', payload: false });
         return;

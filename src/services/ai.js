@@ -1,4 +1,6 @@
 class AIManager {
+  static hasLoggedKeys = false; // Prevent repeated API key logging
+  
   constructor() {
     // Feature flags - initialize first
     this.debugMode = import.meta.env.VITE_DEBUG_MODE === 'true';
@@ -15,12 +17,13 @@ class AIManager {
     this.togetherKey = import.meta.env.VITE_TOGETHER_API_KEY || '';
     this.huggingFaceToken = import.meta.env.VITE_HUGGINGFACE_API_TOKEN || '';
     
-    // Log API key availability for debugging
-    if (this.debugMode) {
+    // Log API key availability for debugging (only once)
+    if (this.debugMode && !AIManager.hasLoggedKeys) {
       console.log('🔑 [DEBUG] API Keys loaded from environment:');
       console.log('- OpenAI:', this.apiKey ? `✅ Available (${this.apiKey.length} chars)` : '❌ Not configured');
       console.log('- OpenRouter:', this.openRouterKey ? `✅ Available (${this.openRouterKey.length} chars)` : '❌ Not configured');
       console.log('- Together AI:', this.togetherKey ? `✅ Available (${this.togetherKey.length} chars)` : '❌ Not configured');
+      AIManager.hasLoggedKeys = true;
     }
     
     // API Base URLs from environment
@@ -47,19 +50,21 @@ class AIManager {
     this.openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY || '';
     this.togetherKey = import.meta.env.VITE_TOGETHER_API_KEY || '';
     
-    // Check if we have any API keys available
-    const hasOpenAI = Boolean(this.apiKey);
-    const hasOpenRouter = Boolean(this.openRouterKey);
-    const hasTogether = Boolean(this.togetherKey);
-    
-    this.debugLog('🚀 AI Manager initialized with environment variables:');
-    this.debugLog('- OpenAI API:', hasOpenAI ? '✅ Configured' : '❌ Not configured');
-    this.debugLog('- OpenRouter API:', hasOpenRouter ? '✅ Configured' : '❌ Not configured');
-    this.debugLog('- Together AI API:', hasTogether ? '✅ Configured' : '❌ Not configured');
-    this.debugLog('- Free fallback APIs: ✅ Available');
-    
-    if (!hasOpenAI && !hasOpenRouter && !hasTogether) {
-      this.infoLog('Using free translation services (no premium API keys configured)');
+    // Only log initialization info once per session
+    if (this.debugMode && !AIManager.hasLoggedKeys) {
+      const hasOpenAI = Boolean(this.apiKey);
+      const hasOpenRouter = Boolean(this.openRouterKey);
+      const hasTogether = Boolean(this.togetherKey);
+      
+      this.debugLog('🚀 AI Manager initialized with environment variables:');
+      this.debugLog('- OpenAI API:', hasOpenAI ? '✅ Configured' : '❌ Not configured');
+      this.debugLog('- OpenRouter API:', hasOpenRouter ? '✅ Configured' : '❌ Not configured');
+      this.debugLog('- Together AI API:', hasTogether ? '✅ Configured' : '❌ Not configured');
+      this.debugLog('- Free fallback APIs: ✅ Available');
+      
+      if (!hasOpenAI && !hasOpenRouter && !hasTogether) {
+        this.infoLog('Using free translation services (no premium API keys configured)');
+      }
     }
     
     return true;

@@ -135,7 +135,7 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       debugLog('Extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 5) {
-        alert('Please add some meaningful text content to generate a summary (at least 5 characters)');
+        alert('✍️ Please type some content in the note first!\n\nYou need at least 5 characters to generate an AI summary.');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
@@ -192,7 +192,7 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       debugLog('Extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 3) {
-        alert('Please add some meaningful text content to generate tags (at least 3 characters)');
+        alert('🏷️ Please type some content in the note first!\n\nYou need at least 3 characters to generate AI tags.');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
@@ -240,7 +240,7 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       debugLog('Extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 3) {
-        alert('Please add some meaningful text content to check grammar (at least 3 characters)');
+        alert('✅ Please type some content in the note first!\n\nYou need at least 3 characters to check grammar.');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
