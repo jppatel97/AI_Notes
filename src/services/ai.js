@@ -2,8 +2,8 @@ class AIManager {
   static hasLoggedKeys = false; // Prevent repeated API key logging
   
   constructor() {
-    // Feature flags - initialize first
-    this.debugMode = import.meta.env.VITE_DEBUG_MODE === 'true';
+    // Feature flags - initialize first (only show debug in development)
+    this.debugMode = import.meta.env.VITE_DEBUG_MODE === 'true' && import.meta.env.DEV;
     this.enableTranslation = import.meta.env.VITE_ENABLE_TRANSLATION !== 'false';
     
     // Environment variables with fallbacks
@@ -39,9 +39,11 @@ class AIManager {
     }
   }
 
-  // Info logging (always shown)
+  // Info logging (only in development)
   infoLog(message, ...args) {
-    console.log(`ℹ️ ${message}`, ...args);
+    if (this.debugMode) {
+      console.log(`ℹ️ ${message}`, ...args);
+    }
   }
 
   async initializeAPI() {
@@ -657,7 +659,7 @@ class AIManager {
     const languageName = languageNames[targetLanguage] || targetLanguage;
     
     // Debug logging for translation
-    this.infoLog('🌐 Starting translation to', languageName);
+    this.debugLog('🌐 Starting translation to', languageName);
     this.debugLog('Text:', text.substring(0, 100));
     this.debugLog('Target language:', languageName);
     this.debugLog('API Key available:', !!this.apiKey);
@@ -670,28 +672,28 @@ class AIManager {
         try {
           const translation = await this.translateWithOpenAI(text, languageName);
           if (translation) {
-            this.infoLog('✅ Translation completed via OpenAI');
+            this.debugLog('✅ Translation completed via OpenAI');
             this.debugLog('Translation result:', translation.substring(0, 50));
             return translation;
           }
         } catch (openaiError) {
-          this.infoLog('⚠️ OpenAI API failed, trying free alternatives');
+          this.debugLog('⚠️ OpenAI API failed, trying free alternatives');
           this.debugLog('OpenAI error:', openaiError.message);
           // Continue to free APIs on OpenAI failure
         }
       } else {
-        this.infoLog('Using free translation APIs');
+        this.debugLog('Using free translation APIs');
       }
 
       // 2. Try free translation APIs as fallback
       this.debugLog('🔄 Trying free translation APIs...');
       try {
         const translation = await this.tryFreeTranslationAPIs(text, targetLanguage, languageName);
-        this.infoLog('✅ Translation completed via free APIs');
+        this.debugLog('✅ Translation completed via free APIs');
         this.debugLog('Free API result:', translation.substring(0, 50));
         return translation;
       } catch (freeApiError) {
-        this.infoLog('⚠️ Free APIs failed, using simple fallback');
+        this.debugLog('⚠️ Free APIs failed, using simple fallback');
         this.debugLog('Free API error:', freeApiError.message);
         // Continue to simple fallback
       }
@@ -699,7 +701,7 @@ class AIManager {
       // 3. Use simple fallback translation
       this.debugLog('🔄 Using simple fallback translation...');
       const fallbackTranslation = this.simpleTranslationFallback(text, languageName);
-      this.infoLog('✅ Translation completed via fallback');
+      this.debugLog('✅ Translation completed via fallback');
       this.debugLog('Fallback result:', fallbackTranslation.substring(0, 50));
       return fallbackTranslation;
 

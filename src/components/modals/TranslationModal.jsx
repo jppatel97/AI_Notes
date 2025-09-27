@@ -7,8 +7,8 @@ const TranslationModal = ({ onClose }) => {
   const [selectedLanguage, setSelectedLanguage] = useState('es');
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Debug mode from environment
-  const debugMode = import.meta.env.VITE_DEBUG_MODE === 'true';
+  // Debug mode from environment - only show logs in development
+  const debugMode = import.meta.env.VITE_DEBUG_MODE === 'true' && import.meta.env.DEV;
   
   // Debug logging utility
   const debugLog = (message, ...args) => {
@@ -17,8 +17,11 @@ const TranslationModal = ({ onClose }) => {
     }
   };
 
+  // Info logging - only show user-friendly messages
   const infoLog = (message, ...args) => {
-    console.log(`ℹ️ ${message}`, ...args);
+    if (debugMode) {
+      console.log(`ℹ️ ${message}`, ...args);
+    }
   };
 
   const languages = {
