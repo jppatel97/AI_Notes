@@ -141,10 +141,10 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       
       if (!text || text.trim() === '' || text.length < 5) {
         const debugInfo = {
-          htmlLength: currentNote.content ? currentNote.content.length : 'null',
-          htmlContent: currentNote.content || 'null',
-          extractedText: text || 'null',
-          textLength: text ? text.length : 'null',
+          htmlLength: currentNote.content ? currentNote.content.length : null,
+          htmlContent: currentNote.content || '',
+          extractedText: text || '',
+          textLength: text ? text.length : 0,
           environment: import.meta.env.PROD ? 'Production' : 'Development',
           timestamp: new Date().toISOString()
         };
@@ -208,10 +208,10 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       
       if (!text || text.trim() === '' || text.length < 3) {
         const debugInfo = {
-          htmlLength: currentNote.content ? currentNote.content.length : 'null',
-          htmlContent: currentNote.content || 'null',
-          extractedText: text || 'null',
-          textLength: text ? text.length : 'null',
+          htmlLength: currentNote.content ? currentNote.content.length : null,
+          htmlContent: currentNote.content || '',
+          extractedText: text || '',
+          textLength: text ? text.length : 0,
           environment: import.meta.env.PROD ? 'Production' : 'Development',
           timestamp: new Date().toISOString()
         };
@@ -348,16 +348,29 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
   const extractTextFromHTML = (html) => {
     try {
       debugLog('🔍 Extracting text from HTML:', html);
+      debugLog('🔍 HTML type:', typeof html);
+      debugLog('🔍 HTML === null:', html === null);
+      debugLog('🔍 HTML === undefined:', html === undefined);
       
       if (!html || html.trim() === '') {
         debugLog('🔍 HTML is completely empty');
         return '';
       }
       
+      // Special case: handle the exact problematic input
+      if (html === '<p></p>') {
+        debugLog('🔍 Exact match for <p></p>, returning empty string');
+        return '';
+      }
+      
       // Handle common empty HTML patterns
       const trimmedHtml = html.trim();
-      if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>') {
-        debugLog('🔍 HTML contains only empty tags');
+      debugLog('🔍 Trimmed HTML for comparison:', `"${trimmedHtml}"`);
+      debugLog('🔍 Trimmed HTML length:', trimmedHtml.length);
+      debugLog('🔍 Checking against <p></p>:', trimmedHtml === '<p></p>');
+      
+      if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>' || trimmedHtml === '<p>&nbsp;</p>') {
+        debugLog('🔍 HTML contains only empty tags, returning empty string');
         return '';
       }
       
@@ -418,8 +431,9 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       console.log('❌ Input HTML:', html);
       // Emergency fallback - just return the HTML with basic tag removal
       const emergency = (html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-      console.log('❌ Emergency fallback result:', emergency);
-      return emergency;
+      console.log('❌ Emergency fallback result:', `"${emergency}"`);
+      // Make sure we never return the string "null"
+      return emergency === 'null' ? '' : emergency;
     }
   };
 
