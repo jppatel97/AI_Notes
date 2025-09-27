@@ -140,7 +140,17 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       debugLog('Final extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 5) {
-        alert('✍️ Please type some content in the note first!\n\nYou need at least 5 characters to generate an AI summary.\n\nCurrent content: "' + text + '"');
+        const debugInfo = {
+          htmlLength: currentNote.content ? currentNote.content.length : 'null',
+          htmlContent: currentNote.content || 'null',
+          extractedText: text || 'null',
+          textLength: text ? text.length : 'null',
+          environment: import.meta.env.PROD ? 'Production' : 'Development',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('❌ SUMMARY: Text extraction failed:', debugInfo);
+        alert('✍️ Please type some content in the note first!\n\nYou need at least 5 characters to generate an AI summary.');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
@@ -197,6 +207,16 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       debugLog('Extracted text length:', text.length);
       
       if (!text || text.trim() === '' || text.length < 3) {
+        const debugInfo = {
+          htmlLength: currentNote.content ? currentNote.content.length : 'null',
+          htmlContent: currentNote.content || 'null',
+          extractedText: text || 'null',
+          textLength: text ? text.length : 'null',
+          environment: import.meta.env.PROD ? 'Production' : 'Development',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('❌ TAGS: Text extraction failed:', debugInfo);
         alert('🏷️ Please type some content in the note first!\n\nYou need at least 3 characters to generate AI tags.');
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
@@ -326,51 +346,81 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
   };
 
   const extractTextFromHTML = (html) => {
-    debugLog('🔍 Extracting text from HTML:', html);
-    
-    if (!html || html.trim() === '') {
-      debugLog('🔍 HTML is completely empty');
-      return '';
+    try {
+      debugLog('🔍 Extracting text from HTML:', html);
+      
+      if (!html || html.trim() === '') {
+        debugLog('🔍 HTML is completely empty');
+        return '';
+      }
+      
+      // Handle common empty HTML patterns
+      const trimmedHtml = html.trim();
+      if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>') {
+        debugLog('🔍 HTML contains only empty tags');
+        return '';
+      }
+      
+      let extractedText = '';
+      
+      try {
+        // Create a temporary div to extract text content
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        
+        // Method 1: Try textContent first (most reliable)
+        const textContent = div.textContent;
+        const innerTextContent = div.innerText;
+        
+        if (textContent && textContent.trim().length > 0) {
+          extractedText = textContent;
+          debugLog('🔍 Used textContent method');
+        } else if (innerTextContent && innerTextContent.trim().length > 0) {
+          extractedText = innerTextContent;
+          debugLog('🔍 Used innerText method');
+        } else {
+          throw new Error('DOM extraction returned empty');
+        }
+      } catch (domError) {
+        debugLog('🔍 DOM extraction failed, using regex method:', domError.message);
+        // Manual parsing fallback - more reliable in some production environments
+        extractedText = html
+          .replace(/<style[^>]*>.*?<\/style>/gi, '') // Remove style tags and content
+          .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script tags and content
+          .replace(/<[^>]*>/g, '') // Remove all HTML tags
+          .replace(/&nbsp;/g, ' ') // Replace &nbsp; entities
+          .replace(/&amp;/g, '&') // Replace &amp; entities
+          .replace(/&lt;/g, '<') // Replace &lt; entities
+          .replace(/&gt;/g, '>') // Replace &gt; entities
+          .replace(/&quot;/g, '"') // Replace &quot; entities
+          .replace(/&#39;/g, "'") // Replace &#39; entities
+          .replace(/&hellip;/g, '...'); // Replace &hellip; entities
+      }
+      
+      // Clean up the extracted text
+      extractedText = extractedText
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces (Unicode)
+        .replace(/\u2000-\u200F/g, ' ') // Replace various Unicode spaces
+        .replace(/\u2028-\u2029/g, ' ') // Replace line and paragraph separators
+        .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+        .trim();
+      
+      debugLog('🔍 Extracted text result:', `"${extractedText}"`);
+      debugLog('🔍 Extracted text length:', extractedText.length);
+      
+      if (debugMode) {
+        debugLog('🔍 Character codes:', extractedText.split('').slice(0, 20).map(c => c.charCodeAt(0)));
+      }
+      
+      return extractedText;
+    } catch (error) {
+      console.error('❌ Critical error in extractTextFromHTML:', error);
+      console.log('❌ Input HTML:', html);
+      // Emergency fallback - just return the HTML with basic tag removal
+      const emergency = (html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+      console.log('❌ Emergency fallback result:', emergency);
+      return emergency;
     }
-    
-    // Handle common empty HTML patterns
-    const trimmedHtml = html.trim();
-    if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>') {
-      debugLog('🔍 HTML contains only empty tags');
-      return '';
-    }
-    
-    // Create a temporary div to extract text content
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    
-    // Get text content using multiple methods
-    let extractedText = '';
-    
-    // Method 1: Try textContent first (most reliable)
-    if (div.textContent) {
-      extractedText = div.textContent;
-    }
-    // Method 2: Fallback to innerText
-    else if (div.innerText) {
-      extractedText = div.innerText;
-    }
-    // Method 3: Manual parsing by removing HTML tags
-    else {
-      extractedText = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-    }
-    
-    // Clean up the extracted text
-    extractedText = extractedText
-      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
-      .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
-      .trim();
-    
-    debugLog('🔍 Extracted text result:', `"${extractedText}"`);
-    debugLog('🔍 Extracted text length:', extractedText.length);
-    debugLog('🔍 Character codes:', extractedText.split('').map(c => c.charCodeAt(0)));
-    
-    return extractedText;
   };
 
   return (
