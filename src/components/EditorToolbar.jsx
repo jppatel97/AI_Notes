@@ -357,46 +357,48 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
         return '';
       }
       
-      // Special case: handle the exact problematic input
-      if (html === '<p></p>') {
-        debugLog('🔍 Exact match for <p></p>, returning empty string');
-        return '';
-      }
-      
-      // Handle common empty HTML patterns
+      // Handle empty HTML patterns with comprehensive checking
       const trimmedHtml = html.trim();
       debugLog('🔍 Trimmed HTML for comparison:', `"${trimmedHtml}"`);
       debugLog('🔍 Trimmed HTML length:', trimmedHtml.length);
-      debugLog('🔍 Checking against <p></p>:', trimmedHtml === '<p></p>');
       
-      if (trimmedHtml === '<p></p>' || trimmedHtml === '<div></div>' || trimmedHtml === '<p><br></p>' || trimmedHtml === '<div><br></div>' || trimmedHtml === '<p>&nbsp;</p>') {
+      // Comprehensive empty pattern detection
+      const emptyPatterns = [
+        '<p></p>',
+        '<div></div>', 
+        '<p><br></p>',
+        '<div><br></div>',
+        '<p>&nbsp;</p>',
+        '<p> </p>',
+        '<div> </div>',
+        '<br>',
+        '<br/>',
+        '<br />',
+        '',
+        ' '
+      ];
+      
+      const isEmptyPattern = emptyPatterns.some(pattern => trimmedHtml === pattern);
+      debugLog('🔍 Checking against empty patterns:', isEmptyPattern);
+      
+      if (isEmptyPattern) {
         debugLog('🔍 HTML contains only empty tags, returning empty string');
+        return '';
+      }
+      
+      // Additional check: if regex extraction would result in empty string
+      const testExtraction = trimmedHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+      if (!testExtraction || testExtraction === '') {
+        debugLog('🔍 Test extraction is empty, returning empty string');
         return '';
       }
       
       let extractedText = '';
       
-      try {
-        // Create a temporary div to extract text content
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        
-        // Method 1: Try textContent first (most reliable)
-        const textContent = div.textContent;
-        const innerTextContent = div.innerText;
-        
-        if (textContent && textContent.trim().length > 0) {
-          extractedText = textContent;
-          debugLog('🔍 Used textContent method');
-        } else if (innerTextContent && innerTextContent.trim().length > 0) {
-          extractedText = innerTextContent;
-          debugLog('🔍 Used innerText method');
-        } else {
-          throw new Error('DOM extraction returned empty');
-        }
-      } catch (domError) {
-        debugLog('🔍 DOM extraction failed, using regex method:', domError.message);
-        // Manual parsing fallback - more reliable in some production environments
+      // For production environments, prioritize regex-based extraction
+      // as DOM methods can be unreliable in server-side rendering contexts
+      if (import.meta.env.PROD) {
+        debugLog('🔍 Production mode: Using regex extraction method');
         extractedText = html
           .replace(/<style[^>]*>.*?<\/style>/gi, '') // Remove style tags and content
           .replace(/<script[^>]*>.*?<\/script>/gi, '') // Remove script tags and content
@@ -408,6 +410,38 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
           .replace(/&quot;/g, '"') // Replace &quot; entities
           .replace(/&#39;/g, "'") // Replace &#39; entities
           .replace(/&hellip;/g, '...'); // Replace &hellip; entities
+      } else {
+        // Development mode: Try DOM methods first, fallback to regex
+        try {
+          const div = document.createElement('div');
+          div.innerHTML = html;
+          
+          const textContent = div.textContent;
+          const innerTextContent = div.innerText;
+          
+          if (textContent && textContent.trim().length > 0) {
+            extractedText = textContent;
+            debugLog('🔍 Used textContent method');
+          } else if (innerTextContent && innerTextContent.trim().length > 0) {
+            extractedText = innerTextContent;
+            debugLog('🔍 Used innerText method');
+          } else {
+            throw new Error('DOM extraction returned empty');
+          }
+        } catch (domError) {
+          debugLog('🔍 DOM extraction failed, using regex method:', domError.message);
+          extractedText = html
+            .replace(/<style[^>]*>.*?<\/style>/gi, '')
+            .replace(/<script[^>]*>.*?<\/script>/gi, '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&hellip;/g, '...');
+        }
       }
       
       // Clean up the extracted text
@@ -423,6 +457,12 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
       
       if (debugMode) {
         debugLog('🔍 Character codes:', extractedText.split('').slice(0, 20).map(c => c.charCodeAt(0)));
+      }
+      
+      // Final safety check: never return the string "null" or "undefined"
+      if (extractedText === 'null' || extractedText === 'undefined' || extractedText === null || extractedText === undefined) {
+        debugLog('🔍 Final safety: converting null/undefined to empty string');
+        return '';
       }
       
       return extractedText;
