@@ -121,30 +121,67 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
     }
   };
 
+  // Helper function to get real-time content from editor
+  const getCurrentEditorContent = () => {
+    const editorElement = document.querySelector('.text-editor');
+    if (editorElement) {
+      const liveText = editorElement.textContent || editorElement.innerText || '';
+      debugLog('🔍 Live editor content:', `"${liveText}"`);
+      debugLog('🔍 Live editor content length:', liveText.length);
+      return liveText.trim();
+    }
+    return '';
+  };
+
+  // Helper function to force save current editor content
+  const forceSaveCurrentContent = async () => {
+    const editorElement = document.querySelector('.text-editor');
+    if (editorElement && currentNote) {
+      const content = editorElement.innerHTML;
+      const updatedNote = { ...currentNote, content };
+      await saveNote(updatedNote);
+      debugLog('🔍 Force saved current editor content');
+    }
+  };
+
   const handleAISummary = async () => {
     infoLog('📝 Generating AI summary...');
     debugLog('Summary button clicked');
-    debugLog('Current note:', currentNote);
-    debugLog('Current note content type:', typeof currentNote?.content);
-    debugLog('Current note content raw:', JSON.stringify(currentNote?.content));
     
-    if (!currentNote?.content) {
-      alert('Please add some content to generate a summary');
-      return;
-    }
-
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const text = extractTextFromHTML(currentNote.content);
+      
+      // Step 1: Force save any unsaved content
+      await forceSaveCurrentContent();
+      
+      // Step 2: Try to get live content from the editor first
+      const liveText = getCurrentEditorContent();
+      let text = '';
+      let contentSource = '';
+      
+      if (liveText && liveText.length >= 5) {
+        text = liveText;
+        contentSource = 'live-editor';
+        debugLog('🔍 Using live editor content');
+      } else if (currentNote?.content) {
+        text = extractTextFromHTML(currentNote.content);
+        contentSource = 'saved-note';
+        debugLog('🔍 Using saved note content');
+      }
+      
       debugLog('Final extracted text:', `"${text}"`);
       debugLog('Final extracted text length:', text.length);
+      debugLog('Content source:', contentSource);
       
       if (!text || text.trim() === '' || text.length < 5) {
         const debugInfo = {
-          htmlLength: currentNote.content ? currentNote.content.length : null,
-          htmlContent: currentNote.content || '',
+          htmlLength: currentNote?.content ? currentNote.content.length : null,
+          htmlContent: currentNote?.content || '',
           extractedText: text || '',
+          liveText: liveText || '',
           textLength: text ? text.length : 0,
+          liveTextLength: liveText ? liveText.length : 0,
+          contentSource: contentSource,
           environment: import.meta.env.PROD ? 'Production' : 'Development',
           timestamp: new Date().toISOString()
         };
@@ -193,25 +230,41 @@ const EditorToolbar = ({ onShowPasswordModal, onShowTranslationModal }) => {
   const handleAITags = async () => {
     infoLog('🏷️ Generating AI tags...');
     debugLog('Tags button clicked');
-    debugLog('Current note content:', currentNote?.content);
     
-    if (!currentNote?.content) {
-      alert('Please add some content to generate tags');
-      return;
-    }
-
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const text = extractTextFromHTML(currentNote.content);
+      
+      // Step 1: Force save any unsaved content
+      await forceSaveCurrentContent();
+      
+      // Step 2: Try to get live content from the editor first
+      const liveText = getCurrentEditorContent();
+      let text = '';
+      let contentSource = '';
+      
+      if (liveText && liveText.length >= 3) {
+        text = liveText;
+        contentSource = 'live-editor';
+        debugLog('🔍 Using live editor content for tags');
+      } else if (currentNote?.content) {
+        text = extractTextFromHTML(currentNote.content);
+        contentSource = 'saved-note';
+        debugLog('🔍 Using saved note content for tags');
+      }
+      
       debugLog('Extracted text:', text);
       debugLog('Extracted text length:', text.length);
+      debugLog('Content source:', contentSource);
       
       if (!text || text.trim() === '' || text.length < 3) {
         const debugInfo = {
-          htmlLength: currentNote.content ? currentNote.content.length : null,
-          htmlContent: currentNote.content || '',
+          htmlLength: currentNote?.content ? currentNote.content.length : null,
+          htmlContent: currentNote?.content || '',
           extractedText: text || '',
+          liveText: liveText || '',
           textLength: text ? text.length : 0,
+          liveTextLength: liveText ? liveText.length : 0,
+          contentSource: contentSource,
           environment: import.meta.env.PROD ? 'Production' : 'Development',
           timestamp: new Date().toISOString()
         };
